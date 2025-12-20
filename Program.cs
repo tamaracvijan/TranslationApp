@@ -13,8 +13,6 @@ namespace TranslationApp {
 
     class Program
     {
-        const string DEFAULT_MODEL = "gemma3:4b";
-        const bool AUTO_SELECT_MODEL = false;
         static string dictionary;
         static async Task Main(string[] args)
         {
@@ -75,7 +73,15 @@ namespace TranslationApp {
                     } while (translatedText != "stop");
                     break;
                 case "3":
-                    translatedText = await TranslateEntireText(ollamaClient, selectedModel);
+                    ChatRequest chatRequest3 = new ChatRequest
+                    {
+                        Model = selectedModel,
+                        Messages = [], // MNOGO VAŽNO - inicijalizuje se prazna lista poruka
+                                       // Ollama chat API zahteva listu celog konteksta razgovora
+                        Stream = false // znači da ne želimo streaming odgovora
+                                       // odgovor dolazi odjednom, a ne deo po deo
+                    };
+                    translatedText = await TranslateEntireText(ollamaClient, selectedModel, chatRequest3);
                     break;
                 default:
                     Console.WriteLine("Odaberite jednu od ponuđenih opcija!");
@@ -341,8 +347,40 @@ namespace TranslationApp {
             return "";
         }
 
-        static async Task<string> TranslateEntireText(HttpClient ollamaClient, string selectedModel)
+        static async Task<string> TranslateEntireText(HttpClient ollamaClient, string selectedModel, ChatRequest chatRequest)
         {
+            Console.WriteLine("\nUnesite tekst za prevod: ");
+            string txt = Console.ReadLine();
+
+            if (txt == "stop")
+            {
+                return txt;
+            }
+
+            if (string.IsNullOrWhiteSpace(txt))
+            {
+                return "Niste uneli tekst za prevod.";
+            }
+
+            Message userMessage = new Message { Role = "system", Content = $"You are a helpfull assistant who translates text from English to Serbian for machine manuals. Here is your dictionary {dictionary}" };
+            chatRequest.Messages.Add(userMessage);
+
+            ChatResponse? chatResponse = await ChatCompletion(ollamaClient, chatRequest, txt);
+
+            if (chatResponse != null)
+            {
+                Message assistantMessage = new Message { Role = chatResponse.Message.Role, Content = chatResponse.Message.Content };
+                chatRequest.Messages.Add(assistantMessage);
+                Console.WriteLine($"{assistantMessage.Role} > {assistantMessage.Content}");
+
+            }
+            else
+            {
+                Console.WriteLine("Greška pri deserijalizaciji odgovora.");
+
+                return "";
+            }
+
             return "";
         }
 
