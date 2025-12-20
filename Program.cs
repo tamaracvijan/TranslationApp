@@ -15,9 +15,10 @@ namespace TranslationApp {
     {
         const string DEFAULT_MODEL = "gemma3:4b";
         const bool AUTO_SELECT_MODEL = false;
+        static string dictionary;
         static async Task Main(string[] args)
         {
-
+            dictionary = File.ReadAllText("data/dictionary.json");
             string ollamaEndpoint = "http://127.0.0.1:11434";
             HttpClient ollamaClient = new HttpClient
             {
@@ -46,7 +47,7 @@ namespace TranslationApp {
             switch (option)
             {
                 case "1":
-                    ChatRequest chatRequest = new ChatRequest
+                    ChatRequest chatRequest1 = new ChatRequest
                     {
                         Model = selectedModel,
                         Messages = [], // MNOGO VAŽNO - inicijalizuje se prazna lista poruka
@@ -54,10 +55,24 @@ namespace TranslationApp {
                         Stream = false // znači da ne želimo streaming odgovora
                                        // odgovor dolazi odjednom, a ne deo po deo
                     };
-                    translatedText = await TranslateLineByLine(ollamaClient, selectedModel, chatRequest);
+                    do
+                    {
+                        translatedText = await TranslateLineByLine(ollamaClient, selectedModel, chatRequest1);
+                    } while (translatedText != "stop");
                     break;
                 case "2":
-                    translatedText = await TranslateInBatches(ollamaClient, selectedModel, 5);
+                    ChatRequest chatRequest2 = new ChatRequest
+                    {
+                        Model = selectedModel,
+                        Messages = [], // MNOGO VAŽNO - inicijalizuje se prazna lista poruka
+                                       // Ollama chat API zahteva listu celog konteksta razgovora
+                        Stream = false // znači da ne želimo streaming odgovora
+                                       // odgovor dolazi odjednom, a ne deo po deo
+                    };
+                    do
+                    {
+                        translatedText = await TranslateInBatches(ollamaClient, selectedModel, chatRequest2);
+                    } while (translatedText != "stop");
                     break;
                 case "3":
                     translatedText = await TranslateEntireText(ollamaClient, selectedModel);
@@ -66,9 +81,6 @@ namespace TranslationApp {
                     Console.WriteLine("Odaberite jednu od ponuđenih opcija!");
                     return;
             }
-
-            Console.WriteLine("PREVOD:\n");
-            Console.WriteLine(translatedText);
 
             // cuvanje u fajl
 
@@ -185,8 +197,7 @@ namespace TranslationApp {
             // proverava da li je uspešno izabrano ime modela u prethodnom koraku
             if (modelName != string.Empty)
             {
-                // brisanje celog sadržaja koji je trenutno prikazan u konzolnom prozoru
-                Console.Clear();
+
                 Console.WriteLine($"Zdravo, ja sam aplikacija za prevođenje, model {modelName}. Kako mogu da ti pomognem?");
                 Console.WriteLine("Da završiš dopisivanje ukucaj /bye");
                 Console.WriteLine();
@@ -201,7 +212,7 @@ namespace TranslationApp {
                                    // odgovor dolazi odjednom, a ne deo po deo
                 };
                 // definisanje ponašanja modela
-                Message userMessage = new Message { Role = "system", Content = "You are a helpfull assistant." };
+                Message userMessage = new Message { Role = "system", Content = "You are a professional technical translator for machine manuals.\r\nUse ONLY glossary and tool information.\r\nDo not invent terminology.\r\nDo not explain the translation." };
 
                 chatRequest.Messages.Add(userMessage);
 
@@ -243,47 +254,22 @@ namespace TranslationApp {
             return chatResponse;
         }
 
-        static string ReadMultipleLines()
-        {
-            StringBuilder sb = new StringBuilder();
-            string line;
-            int emptyLineCount = 0;
-
-            while (true)
-            {
-                line = Console.ReadLine();
-
-                if (string.IsNullOrWhiteSpace(line))
-                {
-                    emptyLineCount++;
-                    if (emptyLineCount >= 2)
-                    {
-                        break;
-                    }
-                }
-                else
-                {
-                    emptyLineCount = 0;
-                    sb.AppendLine(line);
-                }
-            }
-
-            string result = sb.ToString();
-            return result;
-        }
-
         static async Task<string> TranslateLineByLine(HttpClient ollamaClient, string selectedModel, ChatRequest chatRequest)
         {
             Console.WriteLine("\nUnesite red za prevod: ");
             string line = Console.ReadLine();
             
-            if (string.IsNullOrWhiteSpace(line))
+            if(line == "stop")
             {
-                Console.WriteLine("Niste uneli tekst za prevod.");
-                return "";
+                return line;
             }
 
-            Message userMessage = new Message { Role = "system", Content = $"You are a helpfull assistant who translates text from English to Serbian for machine manuals. Here is the text to translate {line}." }; chatRequest.Messages.Add(userMessage);
+            if (string.IsNullOrWhiteSpace(line))
+            {
+                return "Niste uneli tekst za prevod.";
+            }
+
+            Message userMessage = new Message { Role = "system", Content = $"You are a helpfull assistant who translates text from English to Serbian for machine manuals. Here is your dictionary {dictionary}" };
             chatRequest.Messages.Add(userMessage);
 
             ChatResponse? chatResponse = await ChatCompletion(ollamaClient, chatRequest, line);
@@ -306,16 +292,52 @@ namespace TranslationApp {
 
         }
 
-        static async Task<string> TranslateInBatches(HttpClient ollamaClient, string selectedModel, int v)
+        static async Task<string> TranslateInBatches(HttpClient ollamaClient, string selectedModel, ChatRequest chatRequest)
         {
-            //Console.WriteLine("\nUnesite red za prevod: ");
-            //string line = ReadMultipleLines();
-            //
-            //if (string.IsNullOrWhiteSpace(text))
-            //{
-            //    Console.WriteLine("Niste uneli tekst za prevod.");
-            //    return;
-            //}
+            Console.WriteLine("\nUnesite broj redova za prevod: ");
+            string num = Console.ReadLine();
+            if (num == "stop")
+            {
+                return num;
+            }
+            if (!int.TryParse(num, out int number) || number <= 0)
+            {
+                return "Morate uneti pozitivan broj ili 'stop'.";
+            }
+
+            StringBuilder sb = new StringBuilder();
+
+            Console.WriteLine($"Unesite {number} redova ili 'stop' za prekid unosa:");
+
+            for (int i = 0; i < number; i++)
+            {
+                string line = Console.ReadLine();
+
+                if (line == "stop")
+                    return "stop";
+
+                sb.AppendLine(line);
+            }
+
+            string linesToTranslate = sb.ToString();
+
+            Message userMessage = new Message { Role = "system", Content = $"You are a helpfull assistant who translates text from English to Serbian for machine manuals. Here is your dictionary {dictionary}" };
+            chatRequest.Messages.Add(userMessage);
+
+            ChatResponse? chatResponse = await ChatCompletion(ollamaClient, chatRequest, linesToTranslate);
+
+            if (chatResponse != null)
+            {
+                Message assistantMessage = new Message { Role = chatResponse.Message.Role, Content = chatResponse.Message.Content };
+                chatRequest.Messages.Add(assistantMessage);
+                Console.WriteLine($"{assistantMessage.Role} > {assistantMessage.Content}");
+
+            }
+            else
+            {
+                Console.WriteLine("Greška pri deserijalizaciji odgovora.");
+            }
+
             return "";
         }
 
@@ -327,24 +349,3 @@ namespace TranslationApp {
     }
 
 }
-    
-
-    /*public class OllamaGeneratedResponse
-    {
-        [JsonPropertyName("response")] // eksplicitno mapiranje
-        public string Response { get; set; }
-    }
-
-    public class OllamaGenerateRequest
-    {
-        public string Model { get; set; }
-        public string Prompt { get; set; }
-        public bool Stream { get; set; } = false;
-    }
-
-    public class PostResult
-    {
-        public string Title { get; set; }
-        public string Body { get; set; }
-        public string FullResponse { get; set; }
-    }*/
