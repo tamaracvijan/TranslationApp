@@ -33,11 +33,46 @@ namespace TranslationApp {
             Console.Clear();
             Console.WriteLine($"Model: {selectedModel}\n");
 
-            Console.WriteLine("Izaberite opciju prevođenja:");
-            Console.WriteLine("1 - Red po red");
-            Console.WriteLine("2 - Batch");
-            Console.WriteLine("3 - Ceo tekst");
-            Console.WriteLine("Opcija: ");
+            ChatRequest chatRequest = new ChatRequest
+            {
+                Model = selectedModel,
+                Messages = [], // MNOGO VAŽNO - inicijalizuje se prazna lista poruka
+                               // Ollama chat API zahteva listu celog konteksta razgovora
+                Stream = false // znači da ne želimo streaming odgovora
+                               // odgovor dolazi odjednom, a ne deo po deo
+            };
+
+            Message systemMessage = new Message
+            {
+                Role = "system",
+                Content = $@"You are a strict technical translator for machine manuals. 
+                     Your task is to translate input text from English to Serbian. 
+                     STRICT RULES: 
+                     1. Output ONLY the translated text in Serbian. 
+                     2. Do NOT provide explanations, introductions, or notes. 
+                     3. Do NOT reply in English under any circumstances. 
+                     4. Do NOT say 'Here is the translation' or similar fillers. 
+                     5. Use professional tone and address the user in the second person plural
+                     (e.g., use 'ukljucite', 'proverite', 'uverite se' instead of 'ukljuci', 'proveri', 'uveri se').
+                     6. For technical terminology translation:
+                     - Use ONLY the dictionary provided for specific technical terms
+                     - Translate all other words (grammar, common words, context) normally in Serbian
+                     - Example: If dictionary has 'drill: busilica' and input is 'drills are used for making holes', 
+                      translate as 'busilice se koriste za pravljenje/busenje rupa' 
+                      (use 'busilice' from dictionary, translate rest yourself)
+                 
+                     Dictionary for technical terms: {dictionary}"
+            };
+            chatRequest.Messages.Add(systemMessage);
+
+            do
+            {
+                Console.WriteLine("\nIzaberite opciju prevođenja:");
+                Console.WriteLine("1 - Red po red");
+                Console.WriteLine("2 - Batch");
+                Console.WriteLine("3 - Ceo tekst");
+                Console.WriteLine("stop - Izlazak");
+                Console.WriteLine("\nOpcija: ");
 
             string option = Console.ReadLine();
             string translatedText = "";
