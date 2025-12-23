@@ -16,6 +16,8 @@ namespace TranslationApp {
         static string dictionary;
         static async Task Main(string[] args)
         {
+            Console.OutputEncoding = Encoding.UTF8;
+            Console.InputEncoding = Encoding.UTF8;
             dictionary = File.ReadAllText("data/dictionary.json");
             string ollamaEndpoint = "http://127.0.0.1:11434";
             HttpClient ollamaClient = new HttpClient
@@ -46,22 +48,9 @@ namespace TranslationApp {
             Message systemMessage = new Message
             {
                 Role = "system",
-                Content = $@"You are a strict technical translator for machine manuals. 
-                     Your task is to translate input text from English to Serbian. 
-                     STRICT RULES: 
-                     1. Output ONLY the translated text in Serbian. 
-                     2. Do NOT provide explanations, introductions, or notes. 
-                     3. Do NOT reply in English under any circumstances. 
-                     4. Do NOT say 'Here is the translation' or similar fillers. 
-                     5. For technical terminology translation:
-                     - Use ONLY the dictionary provided for specific technical terms
-                     - Translate all other words (grammar, common words, context) normally in Serbian
-                     - Example: If dictionary has 'drill: busilica' and input is 'drills are used for making holes', 
-                      translate as 'busilice se koriste za pravljenje/busenje rupa' 
-                      (use 'busilice' from dictionary, translate rest yourself)
-                 
-                     Dictionary for technical terms: {dictionary}"
+                Content = $@"USE THIS FOR TRANSLATIONS - Dictionary: {dictionary}"
             };
+            chatRequest.Messages.Clear();
             chatRequest.Messages.Add(systemMessage);
 
             do
@@ -133,6 +122,29 @@ namespace TranslationApp {
             Console.WriteLine("\nPritisnite bilo koji taster za izlaz...");
             Console.ReadKey();
             
+        }
+
+        static async Task<string?> GenerateCompletion( HttpClient ollamaClient, string model, string prompt)
+        {
+            GenerateRequest request = new GenerateRequest
+            {
+                model = model,
+                prompt = prompt,
+                stream = false
+            };
+
+            string json = JsonSerializer.Serialize(request);
+            StringContent content = new StringContent(json, Encoding.UTF8, "application/json");
+
+            HttpResponseMessage response =
+                await ollamaClient.PostAsync("/api/generate", content);
+
+            string result = await response.Content.ReadAsStringAsync();
+
+            GenerateResponse? genResponse =
+                JsonSerializer.Deserialize<GenerateResponse>(result);
+
+            return genResponse?.response;
         }
 
         static async Task<bool> ChatWithModel(HttpClient ollamaClient, ChatRequest chatRequest)
@@ -292,27 +304,27 @@ namespace TranslationApp {
 
             Console.WriteLine("\nPrevođenje u toku...");
 
-            ChatResponse? chatResponse = await ChatCompletion(ollamaClient, chatRequest, line);
+            string prompt = $"""
+                            You are a robotic technical translator.
+                            Translate the following text into Serbian.
+                            Use formal address and always address the reader as "Vi".
+                            Output ONLY the Serbian translation.
+                            Never explain anything.
+                            Never use English.
+                            Use lowercase letters for all words except the first word of the sentence.
+                            
+                            Text:
+                            {line}
+                            """;
 
-            if (chatResponse != null)
-            {
-                Message assistantMessage = new Message { Role = chatResponse.Message.Role, Content = chatResponse.Message.Content };
-                chatRequest.Messages.Add(assistantMessage);
-                Console.SetCursorPosition(0, Console.CursorTop - 1);
-                Console.Write(new string(' ', Console.WindowWidth));
-                Console.SetCursorPosition(0, Console.CursorTop);
-                Console.WriteLine($"{assistantMessage.Role} > {assistantMessage.Content}");
+            string? translated = await GenerateCompletion(
+                ollamaClient,
+                selectedModel,
+                prompt
+            );
 
-            }
-            else
-            {
-                Console.WriteLine("Greška pri deserijalizaciji odgovora.");
-
-                return "";
-            }
-
-            return "";
-
+            Console.WriteLine($"assistant > {translated}");
+            return translated ?? "";
         }
 
         static async Task<string> TranslateInBatches(HttpClient ollamaClient, string selectedModel, ChatRequest chatRequest)
@@ -352,24 +364,27 @@ namespace TranslationApp {
 
             string linesToTranslate = sb.ToString();
 
-            ChatResponse? chatResponse = await ChatCompletion(ollamaClient, chatRequest, linesToTranslate);
+            string prompt = $"""
+                            You are a robotic technical translator.
+                            Translate the following text into Serbian.
+                            Use formal address and always address the reader as "Vi".
+                            Output ONLY the Serbian translation.
+                            Never explain anything.
+                            Never use English.
+                            Use lowercase letters for all words except the first word of the sentence.
+                            
+                            Text:
+                            {linesToTranslate}
+                            """;
 
-            if (chatResponse != null)
-            {
-                Message assistantMessage = new Message { Role = chatResponse.Message.Role, Content = chatResponse.Message.Content };
-                chatRequest.Messages.Add(assistantMessage);
-                Console.SetCursorPosition(0, Console.CursorTop - 1);
-                Console.Write(new string(' ', Console.WindowWidth));
-                Console.SetCursorPosition(0, Console.CursorTop);
-                Console.WriteLine($"{assistantMessage.Role} > {assistantMessage.Content}");
+            string? translated = await GenerateCompletion(
+                ollamaClient,
+                selectedModel,
+                prompt
+            );
 
-            }
-            else
-            {
-                Console.WriteLine("Greška pri deserijalizaciji odgovora.");
-            }
-
-            return "";
+            Console.WriteLine($"assistant > {translated}");
+            return translated ?? "";
         }
 
         static async Task<string> TranslateEntireText(HttpClient ollamaClient, string selectedModel, ChatRequest chatRequest)
@@ -393,26 +408,27 @@ namespace TranslationApp {
 
             Console.WriteLine("\nPrevođenje u toku...");
 
-            ChatResponse? chatResponse = await ChatCompletion(ollamaClient, chatRequest, txt);
+            string prompt = $"""
+                            You are a robotic technical translator.
+                            Translate the following text into Serbian.
+                            Use formal address and always address the reader as "Vi".
+                            Output ONLY the Serbian translation.
+                            Never explain anything.
+                            Never use English.
+                            Use lowercase letters for all words except the first word of the sentence.
+                            
+                            Text:
+                            {txt}
+                            """;
 
-            if (chatResponse != null)
-            {
-                Message assistantMessage = new Message { Role = chatResponse.Message.Role, Content = chatResponse.Message.Content };
-                chatRequest.Messages.Add(assistantMessage);
-                Console.SetCursorPosition(0, Console.CursorTop - 1);
-                Console.Write(new string(' ', Console.WindowWidth));
-                Console.SetCursorPosition(0, Console.CursorTop);
-                Console.WriteLine($"{assistantMessage.Role} > {assistantMessage.Content}");
+            string? translated = await GenerateCompletion(
+                ollamaClient,
+                selectedModel,
+                prompt
+            );
 
-            }
-            else
-            {
-                Console.WriteLine("Greška pri deserijalizaciji odgovora.");
-
-                return "";
-            }
-
-            return "";
+            Console.WriteLine($"assistant > {translated}");
+            return translated ?? "";
         }
 
     }
