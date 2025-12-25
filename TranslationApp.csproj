@@ -8,13 +8,14 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Remove="data\dictionary.json" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.1" />
+    <PackageReference Include="Mscc.GenerativeAI" Version="3.0.0" />
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="data\dictionary.json">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
+    <None Update="appsettings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>
