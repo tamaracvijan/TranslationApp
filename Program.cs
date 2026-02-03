@@ -32,7 +32,7 @@ namespace TranslationApp
             
             Console.WriteLine("TRANSLATOR");
             Console.WriteLine("Enter English text line by line. When finished, type 'OK'.");
-            Console.WriteLine($"You have a maximum of {MAX_ITERACIJA} iterations.\n");
+            Console.WriteLine($"You have a maximum of {MAX_ITERATIONS} iterations.\n");
 
             int iterationCount = 0;
 
@@ -42,7 +42,7 @@ namespace TranslationApp
 
                 Console.Clear();
 
-                Console.WriteLine($"Iteration {brojIteracija}/{MAX_ITERACIJA}");
+                Console.WriteLine($"Iteration {iterationCount}/{MAX_ITERATIONS}");
                 Console.WriteLine("Enter terms (type 'OK' when finished):\n");
 
                 List<string> terms = new List<string>();
@@ -56,7 +56,7 @@ namespace TranslationApp
                         break;
                     }
 
-                    if (!string.IsNullOrWhiteSpace(unos))
+                    if (!string.IsNullOrWhiteSpace(input))
                     {
                         terms.Add(input.Trim());
                     }
@@ -105,7 +105,7 @@ namespace TranslationApp
                         }
                         catch (Exception e)
                         {
-                            Console.WriteLine($"Error. Attempt {brojPokusaja}/{MAX_POKUSAJA}.");
+                            Console.WriteLine($"Error. Attempt {attemptCount}/{MAX_ATTEMPTS}.");
                             Console.WriteLine(e.Message);
 
                             if (attemptCount < MAX_ATTEMPTS)
@@ -117,7 +117,7 @@ namespace TranslationApp
 
                     if (!success)
                     {
-                        Console.WriteLine($"Failed for batch number {batchBroj}");
+                        Console.WriteLine($"Failed for batch number {batchNumber}");
                     }
 
                     if (i + BATCH_SIZE < terms.Count)
