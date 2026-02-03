@@ -29,10 +29,10 @@ namespace TranslationApp
 
             GoogleAI googleAI = new GoogleAI(api);
             GenerativeModel model = googleAI.GenerativeModel("models/gemini-1.5-flash");
-
+            
             Console.WriteLine("TRANSLATOR");
             Console.WriteLine("Enter English text line by line. When finished, type 'OK'.");
-            Console.WriteLine($"You have a maximum of {MAX_ITERATIONS} iterations.\n");
+            Console.WriteLine($"You have a maximum of {MAX_ITERACIJA} iterations.\n");
 
             int iterationCount = 0;
 
@@ -42,7 +42,7 @@ namespace TranslationApp
 
                 Console.Clear();
 
-                Console.WriteLine($"Iteration {iterationCount}/{MAX_ITERATIONS}");
+                Console.WriteLine($"Iteration {brojIteracija}/{MAX_ITERACIJA}");
                 Console.WriteLine("Enter terms (type 'OK' when finished):\n");
 
                 List<string> terms = new List<string>();
@@ -56,7 +56,7 @@ namespace TranslationApp
                         break;
                     }
 
-                    if (!string.IsNullOrWhiteSpace(input))
+                    if (!string.IsNullOrWhiteSpace(unos))
                     {
                         terms.Add(input.Trim());
                     }
@@ -81,21 +81,20 @@ namespace TranslationApp
                         attemptCount++;
                         try
                         {
-                            string dictionary = @"";
+                            string recnik = @"";
                             string prompt = $@"
                                             You are an expert translator for power tools and machinery.
-                                            {dictionary}
-
+                                            {recnik}
+                                            
                                             TASK:
                                             Translate the following technical terms from English to Serbian using the terminology above when applicable.
                                             Respond ONLY in the format: 'all English terms', then one empty line, then 'all Serbian translations'.
                                             Each term must be on a separate line.
                                             If the English terms are numbered, keep the SAME numbering in Serbian.
                                             If there are dots, asterisks, or similar symbols at the beginning of a line, IGNORE them.
-                                            
+
                                             TERMS TO TRANSLATE:
                                             {string.Join("\n", batch)}";
-
                             Console.WriteLine("Generating translation...");
                             var response = await model.GenerateContent(prompt);
                             Console.WriteLine("Response received!");
@@ -106,7 +105,7 @@ namespace TranslationApp
                         }
                         catch (Exception e)
                         {
-                            Console.WriteLine($"Error. Attempt {attemptCount}/{MAX_ATTEMPTS}.");
+                            Console.WriteLine($"Error. Attempt {brojPokusaja}/{MAX_POKUSAJA}.");
                             Console.WriteLine(e.Message);
 
                             if (attemptCount < MAX_ATTEMPTS)
@@ -118,7 +117,7 @@ namespace TranslationApp
 
                     if (!success)
                     {
-                        Console.WriteLine($"Failed for batch number {batchNumber}");
+                        Console.WriteLine($"Failed for batch number {batchBroj}");
                     }
 
                     if (i + BATCH_SIZE < terms.Count)
@@ -126,14 +125,13 @@ namespace TranslationApp
                         await Task.Delay(PAUSE);
                     }
                 }
-
                 Console.WriteLine("Translation finished.\nOptions:");
                 Console.WriteLine("ENTER - new translation");
                 Console.WriteLine("'exit' - quit");
                 Console.Write("Choice: ");
 
-                string choice = Console.ReadLine()?.ToLower();
-                if (choice == "exit")
+                string izbor = Console.ReadLine()?.ToLower();
+                if(izbor == "exit")
                 {
                     Console.WriteLine("Exiting...");
                     break;
@@ -146,4 +144,5 @@ namespace TranslationApp
             }
         }
     }
+
 }
